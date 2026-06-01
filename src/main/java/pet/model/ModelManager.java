@@ -39,11 +39,13 @@ public final class ModelManager {
         FileHandle[] atlasFiles = modelDir.list((d, n) -> n.endsWith(".atlas"));
         FileHandle[] skelFiles = modelDir.list((d, n) -> n.endsWith(".skel"));
         FileHandle[] pngFiles = modelDir.list((d, n) -> n.endsWith(".png"));
+        FileHandle voiceDir = modelDir.child("voice");
 
         if (atlasFiles.length == 0 || skelFiles.length == 0) return null;
         return new ModelFiles(atlasFiles[0], skelFiles[0],
-            pngFiles.length > 0 ? pngFiles : new FileHandle[0]);
+            pngFiles.length > 0 ? pngFiles : new FileHandle[0],
+            voiceDir.isDirectory() ? voiceDir : null);
     }
 
-    public record ModelFiles(FileHandle atlas, FileHandle skel, FileHandle[] pngs) {}
+    public record ModelFiles(FileHandle atlas, FileHandle skel, FileHandle[] pngs, FileHandle voiceDir) {}
 }

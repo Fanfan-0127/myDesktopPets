@@ -17,6 +17,7 @@ public final class SettingsFrame extends JFrame {
     private final JSlider sleepTimerSlider;
     private final JSlider relaxMinSlider;
     private final JSlider relaxMaxSlider;
+    private final JSlider voiceIntervalSlider;
     private final JCheckBox interactiveCheck;
     private final JLabel animSpeedLabel;
     private final JLabel moveSpeedLabel;
@@ -26,6 +27,7 @@ public final class SettingsFrame extends JFrame {
     private final JLabel sleepLabel;
     private final JLabel relaxMinLabel;
     private final JLabel relaxMaxLabel;
+    private final JLabel voiceIntervalLabel;
 
     public SettingsFrame() {
         setTitle("桌面宠物设置");
@@ -50,9 +52,10 @@ public final class SettingsFrame extends JFrame {
         sizeSlider = slider(30, 150, 50);
         specialChanceSlider = slider(0, 100, 10);
         moveFreqSlider = slider(0, 100, 70);
-        sleepTimerSlider = slider(10, 300, 120);
+        sleepTimerSlider = slider(10, 300, 30);
         relaxMinSlider = slider(1, 10, 2);
-        relaxMaxSlider = slider(2, 30, 5);
+        relaxMaxSlider = slider(2, 30, 4);
+        voiceIntervalSlider = slider(0, 100, 50);
 
         animSpeedLabel = label("动画速度:", animSpeedSlider, "%");
         moveSpeedLabel = label("移动速度:", moveSpeedSlider, "%");
@@ -62,6 +65,7 @@ public final class SettingsFrame extends JFrame {
         sleepLabel = label("睡眠计时:", sleepTimerSlider, "s");
         relaxMinLabel = label("休息最短:", relaxMinSlider, "s");
         relaxMaxLabel = label("休息最长:", relaxMaxSlider, "s");
+        voiceIntervalLabel = label("语音频率:", voiceIntervalSlider, "s");
 
         interactiveCheck = new JCheckBox("启用交互", true);
 
@@ -110,6 +114,11 @@ public final class SettingsFrame extends JFrame {
         panel.add(relaxMaxSlider, gbc);
 
         gbc.gridy++;
+        addRow(panel, gbc, voiceIntervalLabel);
+        gbc.gridy++;
+        panel.add(voiceIntervalSlider, gbc);
+
+        gbc.gridy++;
         panel.add(interactiveCheck, gbc);
 
         animSpeedSlider.addChangeListener(e -> animSpeedLabel.setText("动画速度: " + animSpeedSlider.getValue() + "%"));
@@ -120,6 +129,7 @@ public final class SettingsFrame extends JFrame {
         sleepTimerSlider.addChangeListener(e -> sleepLabel.setText("睡眠计时: " + sleepTimerSlider.getValue() + "s"));
         relaxMinSlider.addChangeListener(e -> relaxMinLabel.setText("休息最短: " + relaxMinSlider.getValue() + "s"));
         relaxMaxSlider.addChangeListener(e -> relaxMaxLabel.setText("休息最长: " + relaxMaxSlider.getValue() + "s"));
+        voiceIntervalSlider.addChangeListener(e -> voiceIntervalLabel.setText("语音频率: " + voiceIntervalSlider.getValue() + "s"));
 
         JButton applyBtn = new JButton("应用");
         applyBtn.addActionListener(e -> applySettings());
@@ -166,6 +176,7 @@ public final class SettingsFrame extends JFrame {
         pet.setSleepTimeout(sleepTimerSlider.getValue());
         pet.setRelaxMin(relaxMinSlider.getValue());
         pet.setRelaxMax(relaxMaxSlider.getValue());
+        pet.setAmbientVoiceIntervalSeconds(voiceIntervalSlider.getValue());
         pet.setInteractive(interactiveCheck.isSelected());
     }
 
@@ -180,6 +191,7 @@ public final class SettingsFrame extends JFrame {
         sleepTimerSlider.setValue((int) pet.getSleepTimeout());
         relaxMinSlider.setValue((int) pet.getRelaxMin());
         relaxMaxSlider.setValue((int) pet.getRelaxMax());
+        voiceIntervalSlider.setValue((int) pet.getAmbientVoiceIntervalSeconds());
         interactiveCheck.setSelected(pet.isInteractive());
     }
 

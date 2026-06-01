@@ -3,6 +3,8 @@ package pet;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
@@ -26,6 +28,9 @@ import pet.window.WindowManager.SnapResult;
 
 public class PetCore extends ApplicationAdapter {
 
+    private static final float BASE_MOVE_SPEED = 100f;
+    private static final int SNAP_EDGE_GUARD = 50;
+
     private PolygonSpriteBatch batch;
     private OrthographicCamera camera;
     private SkeletonRenderer renderer;
@@ -34,32 +39,49 @@ public class PetCore extends ApplicationAdapter {
     private AnimationState animationState;
     private SkeletonData skeletonData;
     private float animSpeed = 1f;
-    private float moveSpeed = 120f;
+    private float moveSpeed = BASE_MOVE_SPEED;
     private float petScale = 0.5f;
 
     private int windowX, windowY;
     private int targetScreenX;
+    private int targetWindowY;
     private int windowW, windowH;
     private float renderX, renderY;
     private boolean moving;
+    private boolean snapping;
     private boolean dragging;
     private boolean clickStart;
     private float dragOffsetScreenX, dragOffsetScreenY;
     private float dragStartX, dragStartY;
     private float idleTimer;
     private float relaxTimer;
+    private float sleepTimer;
+    private float greetingDelayTimer;
+    private float voiceCooldownTimer;
     private String currentAnim;
     private boolean facingRight = true;
     private boolean windowInitDone;
     private float petMinX, petMinY, petMaxX, petMaxY;
+    private boolean snapped;
+    private int snappedLeftBound;
+    private int snappedRightBound;
 
-    private float sleepTimeout = 120f;
-    private float relaxMin = 1.5f;
-    private float relaxMax = 5f;
+    private float sleepTimeout = 30f;
+    private float sleepChance = 0.05f;
+    private float relaxMin = 2f;
+    private float relaxMax = 4f;
     private float moveChance = 1f;
     private float specialChance = 0.02f;
+    private float ambientVoiceIntervalSeconds = 50f;
     private boolean interactive = true;
     private int pad = 30;
+    private int rightPadExtra = 10;
+
+    private Music interactVoice;
+    private Music greetingVoice;
+    private Music[] ambientVoices = new Music[0];
+    private boolean greetingPending;
+    private Music currentVoice;
 
     @Override
     public void create() {
@@ -84,6 +106,9 @@ public class PetCore extends ApplicationAdapter {
         windowY = taskbarTop - windowH;
 
         relaxTimer = MathUtils.random(relaxMin, relaxMax);
+        greetingDelayTimer = 1f;
+        greetingPending = true;
+        scheduleNextAmbientVoice();
     }
 
     private void calcWindowSize() {
@@ -91,18 +116,18 @@ public class PetCore extends ApplicationAdapter {
         skeleton.updateWorldTransform();
         float[] bbox = computeBbox();
         if (bbox != null) {
-            windowW = (int) (bbox[2] - bbox[0]) + pad * 2;
+            windowW = (int) (bbox[2] - bbox[0]) + pad * 2 + rightPadExtra;
             windowH = (int) (bbox[3] - bbox[1]) + pad * 2;
-            renderX = windowW / 2f;
+            renderX = pad - bbox[0];
             renderY = pad - bbox[1];
             petMinX = renderX + bbox[0];
             petMinY = renderY + bbox[1];
             petMaxX = renderX + bbox[2];
             petMaxY = renderY + bbox[3];
         } else {
-            windowW = pad * 2 + 100;
+            windowW = pad * 2 + rightPadExtra + 100;
             windowH = pad * 2 + 100;
-            renderX = windowW / 2f;
+            renderX = pad;
             renderY = pad;
         }
     }
@@ -138,6 +163,7 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private void loadModel(String modelName) {
+        disposeVoices();
         ModelFiles files = ModelManager.getModelFiles(modelName);
         if (files == null) {
             Gdx.app.error("PetCore", "Model not found: " + modelName);
@@ -154,6 +180,11 @@ public class PetCore extends ApplicationAdapter {
         AnimationStateData stateData = new AnimationStateData(skeletonData);
         stateData.setDefaultMix(0.3f);
         animationState = new AnimationState(stateData);
+
+        loadVoices(files.voiceDir());
+        greetingDelayTimer = 1f;
+        greetingPending = true;
+        scheduleNextAmbientVoice();
     }
 
     @Override
@@ -169,6 +200,7 @@ public class PetCore extends ApplicationAdapter {
 
         handleInput();
         updateBehavior(delta);
+        updateVoicePlayback(delta);
 
         animationState.update(delta);
         animationState.apply(skeleton);
@@ -178,20 +210,8 @@ public class PetCore extends ApplicationAdapter {
         skeleton.setScaleY(petScale);
         skeleton.updateWorldTransform();
 
-        if (moving) {
-            float dx = targetScreenX - windowX;
-            if (Math.abs(dx) > 3) {
-                int step = (int) (moveSpeed * delta);
-                windowX += (int) (Math.signum(dx) * Math.min(Math.abs(dx), step));
-                facingRight = dx > 0;
-                WindowManager.moveWindow(windowX, windowY, windowW, windowH);
-            } else {
-                windowX = targetScreenX;
-                WindowManager.moveWindow(windowX, windowY, windowW, windowH);
-                moving = false;
-                relaxTimer = MathUtils.random(relaxMin, relaxMax);
-                setAnimation("Relax", true);
-            }
+        if (moving || snapping) {
+            updateMotion(delta);
         }
 
         camera.viewportWidth = windowW;
@@ -240,6 +260,8 @@ public class PetCore extends ApplicationAdapter {
                 windowX = (int) (screenMouseX + dragOffsetScreenX);
                 windowY = (int) (screenMouseY + dragOffsetScreenY);
                 moving = false;
+                snapping = false;
+                clearSnappedBounds();
                 WindowManager.moveWindow(windowX, windowY, windowW, windowH);
             }
         }
@@ -250,6 +272,7 @@ public class PetCore extends ApplicationAdapter {
                 if (hasAnimation("Interact")) {
                     animationState.setAnimation(0, "Interact", false);
                     animationState.addAnimation(0, "Relax", true, 0);
+                    tryPlayVoice(interactVoice);
                 }
                 currentAnim = "Relax";
                 relaxTimer = MathUtils.random(relaxMin, relaxMax);
@@ -269,34 +292,65 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private void onDragRelease() {
-        SnapResult snap = WindowManager.snapToNearestWindow(windowX, windowY, windowW, windowH);
+        int petBodyLeft = Math.round(windowX + petMinX);
+        int petBodyTop = Math.round(windowY + (windowH - petMaxY));
+        int petBodyWidth = Math.max(1, Math.round(petMaxX - petMinX));
+        int petBodyHeight = Math.max(1, Math.round(petMaxY - petMinY));
+
+        SnapResult snap = WindowManager.snapToNearestWindow(
+            petBodyLeft,
+            petBodyTop,
+            petBodyWidth,
+            petBodyHeight
+        );
         if (snap != null) {
-            windowX = snap.x();
-            windowY = snap.y();
+            windowX = Math.round(snap.x() - petMinX);
+            windowY = Math.round(snap.bottom() - petMaxY);
+            stopMotion();
+            rememberSnappedBounds(snap.left(), snap.right());
             WindowManager.moveWindow(windowX, windowY, windowW, windowH);
-            setAnimation(snap.topEdge() ? "Sit" : "Relax", true);
         } else {
-            setAnimation("Relax", true);
+            clearSnappedBounds();
         }
         relaxTimer = MathUtils.random(relaxMin, relaxMax);
+        setAnimation("Relax", true);
     }
 
     private void updateBehavior(float delta) {
         if (dragging || clickStart) return;
 
         if (idleTimer > sleepTimeout && !currentAnim.equals("Sleep")) {
-            if (hasAnimation("Sleep")) setAnimation("Sleep", true);
+            if (hasAnimation("Sleep") && MathUtils.random() < sleepChance) {
+                sleepTimer = sleepTimeout;
+                stopMotion();
+                setAnimation("Sleep", true);
+            } else {
+                idleTimer = 0f;
+            }
             return;
         }
 
-        if (currentAnim.equals("Sleep") || isPlayingOneShot()) return;
+        if (currentAnim.equals("Sleep")) {
+            stopMotion();
+            sleepTimer -= delta;
+            if (sleepTimer <= 0f) {
+                idleTimer = 0f;
+                relaxTimer = MathUtils.random(relaxMin, relaxMax);
+                setAnimation("Relax", true);
+            }
+            return;
+        }
+
+        if (isPlayingOneShot()) return;
 
         if (!moving && currentAnim.equals("Relax")) {
             relaxTimer -= delta;
             if (relaxTimer <= 0 && MathUtils.random() < moveChance) {
                 int[] bounds = WindowManager.getMovementBounds(windowW);
-                targetScreenX = MathUtils.random(bounds[0], bounds[1]);
+                targetScreenX = chooseNextTargetX(bounds[0], bounds[1]);
+                targetWindowY = windowY;
                 moving = true;
+                snapping = false;
                 setAnimation("Move", true);
             } else if (relaxTimer <= 0) {
                 relaxTimer = MathUtils.random(relaxMin, relaxMax);
@@ -335,6 +389,205 @@ public class PetCore extends ApplicationAdapter {
         return x > petMinX && x < petMaxX && y > petMinY && y < petMaxY;
     }
 
+    private void updateMotion(float delta) {
+        float dx = targetScreenX - windowX;
+        float dy = targetWindowY - windowY;
+        if (Math.abs(dx) > 1f) {
+            facingRight = dx > 0;
+        }
+
+        int step = Math.max(1, (int) (moveSpeed * delta));
+        int moveX = (int) Math.signum(dx) * Math.min(Math.abs(Math.round(dx)), step);
+        int moveY = (int) Math.signum(dy) * Math.min(Math.abs(Math.round(dy)), step);
+
+        boolean reachedX = Math.abs(dx) <= 3f;
+        boolean reachedY = Math.abs(dy) <= 3f;
+
+        if (!reachedX) {
+            windowX += moveX;
+        } else {
+            windowX = targetScreenX;
+        }
+
+        if (!reachedY) {
+            windowY += moveY;
+        } else {
+            windowY = targetWindowY;
+        }
+
+        WindowManager.moveWindow(windowX, windowY, windowW, windowH);
+
+        if (reachedX && reachedY) {
+            moving = false;
+            snapping = false;
+            relaxTimer = MathUtils.random(relaxMin, relaxMax);
+            setAnimation("Relax", true);
+        }
+    }
+
+    private void stopMotion() {
+        moving = false;
+        snapping = false;
+        targetScreenX = windowX;
+        targetWindowY = windowY;
+    }
+
+    private int chooseNextTargetX(int minX, int maxX) {
+        int fallback = MathUtils.random(minX, maxX);
+        if (!snapped) {
+            return fallback;
+        }
+
+        int petLeft = Math.round(windowX + petMinX);
+        int petRight = Math.round(windowX + petMaxX);
+        int leftDistance = Math.abs(petLeft - snappedLeftBound);
+        int rightDistance = Math.abs(snappedRightBound - petRight);
+
+        int leftEscapeMin = minX;
+        int leftEscapeMax = Math.max(minX, windowX - 1);
+        int rightEscapeMin = Math.min(maxX, windowX + 1);
+        int rightEscapeMax = maxX;
+
+        if (leftDistance < SNAP_EDGE_GUARD && rightEscapeMin <= rightEscapeMax) {
+            return MathUtils.random(rightEscapeMin, rightEscapeMax);
+        }
+        if (rightDistance < SNAP_EDGE_GUARD && leftEscapeMin <= leftEscapeMax) {
+            return MathUtils.random(leftEscapeMin, leftEscapeMax);
+        }
+        return fallback;
+    }
+
+    private void rememberSnappedBounds(int left, int right) {
+        snapped = true;
+        snappedLeftBound = left;
+        snappedRightBound = right;
+    }
+
+    private void clearSnappedBounds() {
+        snapped = false;
+        snappedLeftBound = 0;
+        snappedRightBound = 0;
+    }
+
+    private void updateVoicePlayback(float delta) {
+        if (greetingPending && greetingVoice != null) {
+            greetingDelayTimer -= delta;
+            if (greetingDelayTimer <= 0f) {
+                if (tryPlayVoice(greetingVoice)) {
+                    greetingPending = false;
+                }
+            }
+        }
+
+        if (ambientVoices.length == 0 || ambientVoiceIntervalSeconds <= 0f) {
+            return;
+        }
+
+        if (!isAmbientVoiceAllowed()) {
+            return;
+        }
+
+        voiceCooldownTimer -= delta;
+        if (voiceCooldownTimer <= 0f) {
+            tryPlayVoice(ambientVoices[MathUtils.random(ambientVoices.length - 1)]);
+            scheduleNextAmbientVoice();
+        }
+    }
+
+    private void loadVoices(FileHandle voiceDir) {
+        interactVoice = null;
+        greetingVoice = null;
+        ambientVoices = new Music[0];
+        if (voiceDir == null || !voiceDir.isDirectory()) {
+            return;
+        }
+
+        FileHandle interactFile = voiceDir.child("戳一下.wav");
+        if (interactFile.exists()) {
+            interactVoice = createVoice(interactFile);
+        }
+
+        FileHandle greetingFile = voiceDir.child("问候.wav");
+        if (greetingFile.exists()) {
+            greetingVoice = createVoice(greetingFile);
+        }
+
+        String[] ambientNames = { "交谈1.wav", "交谈2.wav", "交谈3.wav", "信赖触摸.wav" };
+        List<Music> sounds = new java.util.ArrayList<>();
+        for (String ambientName : ambientNames) {
+            FileHandle ambientFile = voiceDir.child(ambientName);
+            if (ambientFile.exists()) {
+                sounds.add(createVoice(ambientFile));
+            }
+        }
+        ambientVoices = sounds.toArray(new Music[0]);
+    }
+
+    private void scheduleNextAmbientVoice() {
+        if (ambientVoiceIntervalSeconds <= 0f) {
+            voiceCooldownTimer = Float.MAX_VALUE;
+            return;
+        }
+        float halfInterval = ambientVoiceIntervalSeconds * 0.5f;
+        voiceCooldownTimer = MathUtils.random(
+            ambientVoiceIntervalSeconds,
+            ambientVoiceIntervalSeconds + halfInterval
+        );
+    }
+
+    private Music createVoice(FileHandle file) {
+        Music voice = Gdx.audio.newMusic(file);
+        voice.setOnCompletionListener(completed -> {
+            completed.stop();
+            completed.setPosition(0f);
+            if (currentVoice == completed) {
+                currentVoice = null;
+            }
+        });
+        return voice;
+    }
+
+    private boolean tryPlayVoice(Music voice) {
+        if (voice == null || isVoicePlaying()) {
+            return false;
+        }
+        currentVoice = voice;
+        voice.stop();
+        voice.setPosition(0f);
+        voice.play();
+        return true;
+    }
+
+    private boolean isVoicePlaying() {
+        return currentVoice != null && currentVoice.isPlaying();
+    }
+
+    private boolean isAmbientVoiceAllowed() {
+        if (dragging || clickStart) {
+            return false;
+        }
+        return "Relax".equals(currentAnim) || "Move".equals(currentAnim);
+    }
+
+    private void disposeVoice(Music voice) {
+        if (voice != null) {
+            voice.stop();
+            voice.dispose();
+        }
+    }
+
+    private void disposeVoices() {
+        disposeVoice(interactVoice);
+        interactVoice = null;
+        disposeVoice(greetingVoice);
+        greetingVoice = null;
+        for (Music ambientVoice : ambientVoices) {
+            disposeVoice(ambientVoice);
+        }
+        ambientVoices = new Music[0];
+        currentVoice = null;
+    }
+
     public void switchModel(String modelName) {
         Gdx.app.postRunnable(() -> {
             String prevAnim = currentAnim;
@@ -352,8 +605,8 @@ public class PetCore extends ApplicationAdapter {
 
     public void setAnimSpeed(float speed) { this.animSpeed = speed; }
     public float getAnimSpeed() { return animSpeed; }
-    public void setMoveSpeed(float speed) { this.moveSpeed = speed * 120f; }
-    public float getMoveSpeed() { return moveSpeed / 120f; }
+    public void setMoveSpeed(float speed) { this.moveSpeed = speed * BASE_MOVE_SPEED; }
+    public float getMoveSpeed() { return moveSpeed / BASE_MOVE_SPEED; }
 
     public void setPetScale(float scale) {
         Gdx.app.postRunnable(() -> {
@@ -376,6 +629,11 @@ public class PetCore extends ApplicationAdapter {
     public float getRelaxMin() { return relaxMin; }
     public void setRelaxMax(float sec) { this.relaxMax = sec; }
     public float getRelaxMax() { return relaxMax; }
+    public void setAmbientVoiceIntervalSeconds(float sec) {
+        this.ambientVoiceIntervalSeconds = sec;
+        scheduleNextAmbientVoice();
+    }
+    public float getAmbientVoiceIntervalSeconds() { return ambientVoiceIntervalSeconds; }
     public void setInteractive(boolean on) { this.interactive = on; }
     public boolean isInteractive() { return interactive; }
 
@@ -389,6 +647,7 @@ public class PetCore extends ApplicationAdapter {
 
     @Override
     public void dispose() {
+        disposeVoices();
         batch.dispose();
     }
 }
