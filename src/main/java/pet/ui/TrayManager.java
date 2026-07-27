@@ -12,13 +12,7 @@ public final class TrayManager {
 
     private static SettingsFrame settingsFrame;
 
-    private static final Font MENU_FONT = new Font("Microsoft YaHei", Font.PLAIN, 12);
-
     private TrayManager() {}
-
-    private static void setFont(MenuItem item) {
-        item.setFont(MENU_FONT);
-    }
 
     public static void install() {
         if (!SystemTray.isSupported()) return;
@@ -47,31 +41,26 @@ public final class TrayManager {
         PopupMenu menu = new PopupMenu();
 
         MenuItem showHide = new MenuItem("显示/隐藏宠物");
-        setFont(showHide);
         showHide.addActionListener(TrayManager::toggleVisibility);
         menu.add(showHide);
 
         menu.addSeparator();
 
         Menu modelMenu = new Menu("选择模型");
-        setFont(modelMenu);
         for (String name : ModelManager.listModels()) {
             MenuItem item = new MenuItem(name);
-            setFont(item);
             item.addActionListener(e -> switchModel(name));
             modelMenu.add(item);
         }
         menu.add(modelMenu);
 
         MenuItem settings = new MenuItem("设置...");
-        setFont(settings);
         settings.addActionListener(e -> openSettings());
         menu.add(settings);
 
         menu.addSeparator();
 
         MenuItem exit = new MenuItem("退出");
-        setFont(exit);
         exit.addActionListener(e -> System.exit(0));
         menu.add(exit);
 
