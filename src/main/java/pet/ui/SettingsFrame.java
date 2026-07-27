@@ -2,6 +2,7 @@ package pet.ui;
 
 import pet.Main;
 import pet.PetCore;
+import pet.config.AppConfig;
 import pet.model.ModelManager;
 import javax.swing.*;
 import java.awt.*;
@@ -37,6 +38,8 @@ public final class SettingsFrame extends JFrame {
         setResizable(false);
         setAlwaysOnTop(true);
 
+        AppConfig c = AppConfig.getInstance();
+
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -49,15 +52,15 @@ public final class SettingsFrame extends JFrame {
         modelSelector = new JComboBox<>();
         for (String name : ModelManager.listModels()) modelSelector.addItem(name);
 
-        animSpeedSlider = slider(50, 200, 100);
-        moveSpeedSlider = slider(50, 200, 100);
-        sizeSlider = slider(30, 150, 50);
-        specialChanceSlider = slider(0, 100, 10);
-        moveFreqSlider = slider(0, 100, 70);
-        sleepTimerSlider = slider(10, 300, 30);
-        relaxMinSlider = slider(1, 10, 2);
-        relaxMaxSlider = slider(2, 30, 4);
-        voiceIntervalSlider = slider(0, 100, 50);
+        animSpeedSlider = slider(50, 200, (int)(c.getAnimSpeed() * 100));
+        moveSpeedSlider = slider(50, 200, (int)c.getMoveSpeed());
+        sizeSlider = slider(30, 150, (int)(c.getPetScale() * 100));
+        specialChanceSlider = slider(0, 100, (int)(c.getSpecialChance() * 100));
+        moveFreqSlider = slider(0, 100, (int)(c.getMoveChance() * 100));
+        sleepTimerSlider = slider(10, 300, (int)c.getSleepTimeout());
+        relaxMinSlider = slider(1, 10, (int)c.getRelaxMin());
+        relaxMaxSlider = slider(2, 30, (int)c.getRelaxMax());
+        voiceIntervalSlider = slider(0, 100, (int)c.getAmbientVoiceInterval());
 
         animSpeedLabel = label("动画速度:", animSpeedSlider, "%");
         moveSpeedLabel = label("移动速度:", moveSpeedSlider, "%");
@@ -69,9 +72,9 @@ public final class SettingsFrame extends JFrame {
         relaxMaxLabel = label("休息最长:", relaxMaxSlider, "s");
         voiceIntervalLabel = label("语音频率:", voiceIntervalSlider, "s");
 
-        voiceEnabledCheck = new JCheckBox("语音功能", true);
-        alwaysOnTopCheck = new JCheckBox("窗口置顶", true);
-        interactiveCheck = new JCheckBox("启用交互", true);
+        voiceEnabledCheck = new JCheckBox("语音功能", c.isVoiceEnabled());
+        alwaysOnTopCheck = new JCheckBox("窗口置顶", c.isAlwaysOnTop());
+        interactiveCheck = new JCheckBox("启用交互", c.isInteractive());
 
         addRow(panel, gbc, new JLabel("模型:"));
         gbc.gridy++;

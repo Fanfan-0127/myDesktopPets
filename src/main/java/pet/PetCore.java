@@ -21,6 +21,7 @@ import com.esotericsoftware.spine.attachments.Attachment;
 import com.esotericsoftware.spine.attachments.RegionAttachment;
 import com.esotericsoftware.spine.attachments.MeshAttachment;
 import java.util.List;
+import pet.config.AppConfig;
 import pet.model.ModelManager;
 import pet.model.ModelManager.ModelFiles;
 import pet.window.WindowManager;
@@ -35,12 +36,14 @@ public class PetCore extends ApplicationAdapter {
     private OrthographicCamera camera;
     private SkeletonRenderer renderer;
 
+    private final AppConfig cfg = AppConfig.getInstance();
+
     private Skeleton skeleton;
     private AnimationState animationState;
     private SkeletonData skeletonData;
-    private float animSpeed = 1f;
-    private float moveSpeed = BASE_MOVE_SPEED;
-    private float petScale = 0.5f;
+    private float animSpeed = cfg.getAnimSpeed();
+    private float moveSpeed = cfg.getMoveSpeed();
+    private float petScale = cfg.getPetScale();
 
     private int windowX, windowY;
     private int targetScreenX;
@@ -66,18 +69,18 @@ public class PetCore extends ApplicationAdapter {
     private int snappedLeftBound;
     private int snappedRightBound;
 
-    private float sleepTimeout = 30f;
-    private float sleepChance = 0.05f;
-    private float relaxMin = 2f;
-    private float relaxMax = 4f;
-    private float moveChance = 1f;
-    private float specialChance = 0.02f;
-    private float ambientVoiceIntervalSeconds = 50f;
-    private boolean interactive = true;
-    private boolean voiceEnabled = true;
-    private boolean alwaysOnTop = true;
-    private int pad = 30;
-    private int rightPadExtra = 10;
+    private float sleepTimeout = cfg.getSleepTimeout();
+    private float sleepChance = cfg.getSleepChance();
+    private float relaxMin = cfg.getRelaxMin();
+    private float relaxMax = cfg.getRelaxMax();
+    private float moveChance = cfg.getMoveChance();
+    private float specialChance = cfg.getSpecialChance();
+    private float ambientVoiceIntervalSeconds = cfg.getAmbientVoiceInterval();
+    private boolean interactive = cfg.isInteractive();
+    private boolean voiceEnabled = cfg.isVoiceEnabled();
+    private boolean alwaysOnTop = cfg.isAlwaysOnTop();
+    private int pad = cfg.getPad();
+    private int rightPadExtra = cfg.getRightPadExtra();
 
     private Music interactVoice;
     private Music greetingVoice;

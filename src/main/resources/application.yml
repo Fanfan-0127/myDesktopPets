@@ -1,0 +1,49 @@
+# ========================================
+# 桌面宠物 (DesktopPet) 配置文件
+# 所有可配置项均在此文件中，启动时加载
+# ========================================
+
+pet:
+  # 动画速度倍率 (1.0 = 100%)
+  anim-speed: 1.0
+
+  # 移动速度 (像素/秒)
+  move-speed: 100
+
+  # 宠物缩放 (0.5 = 50%)
+  pet-scale: 0.5
+
+  # 无交互后进入睡眠的等待时间 (秒)
+  sleep-timeout: 30
+
+  # 每秒触发睡眠的概率
+  sleep-chance: 0.05
+
+  # 移动前随机休息时间范围 (秒)
+  relax-min: 2
+  relax-max: 4
+
+  # 休息计时器到期后移动的概率 (1.0 = 100%)
+  move-chance: 1.0
+
+  # 每秒触发特殊动画的概率
+  special-chance: 0.02
+
+  # 环境音播放间隔 (秒, 0 = 禁用)
+  ambient-voice-interval: 50
+
+  # 是否启用交互 (点击/拖拽)
+  interactive: true
+
+  # 是否启用语音 (仅控制随机/问候语音, 不影响Interact)
+  voice-enabled: true
+
+  # 桌宠窗口是否始终置顶
+  always-on-top: true
+
+window:
+  # 窗口内边距 (像素)
+  pad: 30
+
+  # 右侧额外内边距 (像素)
+  right-pad-extra: 10
