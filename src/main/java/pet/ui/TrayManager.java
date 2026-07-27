@@ -10,6 +10,16 @@ import java.awt.image.BufferedImage;
 
 public final class TrayManager {
 
+    private static final String MENU_GLYPHS = "显示隐藏宠物选择模型设置退出";
+    private static final String[] MENU_FONT_FAMILIES = {
+        "Microsoft YaHei UI",
+        "Microsoft YaHei",
+        "Microsoft JhengHei UI",
+        "SimSun",
+        Font.DIALOG
+    };
+    private static final Font MENU_FONT = resolveMenuFont();
+
     private static SettingsFrame settingsFrame;
 
     private TrayManager() {}
@@ -39,32 +49,48 @@ public final class TrayManager {
 
     private static PopupMenu createMenu() {
         PopupMenu menu = new PopupMenu();
+        menu.setFont(MENU_FONT);
 
         MenuItem showHide = new MenuItem("显示/隐藏宠物");
+        showHide.setFont(MENU_FONT);
         showHide.addActionListener(TrayManager::toggleVisibility);
         menu.add(showHide);
 
         menu.addSeparator();
 
         Menu modelMenu = new Menu("选择模型");
+        modelMenu.setFont(MENU_FONT);
         for (String name : ModelManager.listModels()) {
             MenuItem item = new MenuItem(name);
+            item.setFont(MENU_FONT);
             item.addActionListener(e -> switchModel(name));
             modelMenu.add(item);
         }
         menu.add(modelMenu);
 
         MenuItem settings = new MenuItem("设置...");
+        settings.setFont(MENU_FONT);
         settings.addActionListener(e -> openSettings());
         menu.add(settings);
 
         menu.addSeparator();
 
         MenuItem exit = new MenuItem("退出");
+        exit.setFont(MENU_FONT);
         exit.addActionListener(e -> System.exit(0));
         menu.add(exit);
 
         return menu;
+    }
+
+    private static Font resolveMenuFont() {
+        for (String family : MENU_FONT_FAMILIES) {
+            Font font = new Font(family, Font.PLAIN, 12);
+            if (font.canDisplayUpTo(MENU_GLYPHS) == -1) {
+                return font;
+            }
+        }
+        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 
     private static void toggleVisibility(java.awt.event.ActionEvent e) {
