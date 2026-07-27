@@ -51,6 +51,12 @@ public final class WindowManager {
         int exStyle = User32.INSTANCE.GetWindowLong(petHwnd, WinUser.GWL_EXSTYLE);
         exStyle |= WS_EX_TRANSPARENT | WS_EX_TOPMOST;
         User32.INSTANCE.SetWindowLong(petHwnd, WinUser.GWL_EXSTYLE, exStyle);
+        User32.INSTANCE.SetWindowPos(
+            petHwnd,
+            HWND_TOPMOST,
+            0, 0, 0, 0,
+            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_FRAMECHANGED
+        );
         initialized = true;
     }
 
@@ -125,12 +131,19 @@ public final class WindowManager {
         if (!initialized) {
             return;
         }
+        int exStyle = User32.INSTANCE.GetWindowLong(petHwnd, WinUser.GWL_EXSTYLE);
+        if (on) {
+            exStyle |= WS_EX_TOPMOST;
+        } else {
+            exStyle &= ~WS_EX_TOPMOST;
+        }
+        User32.INSTANCE.SetWindowLong(petHwnd, WinUser.GWL_EXSTYLE, exStyle);
         WinDef.HWND insertAfter = on ? HWND_TOPMOST : HWND_NOTOPMOST;
         User32.INSTANCE.SetWindowPos(
             petHwnd,
             insertAfter,
             0, 0, 0, 0,
-            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE
+            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_FRAMECHANGED
         );
     }
 
