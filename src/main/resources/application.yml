@@ -14,10 +14,10 @@ pet:
   pet-scale: 0.5
 
   # 无交互后进入睡眠的等待时间 (秒)
-  sleep-timeout: 30
+  sleep-timeout: 120
 
   # 每秒触发睡眠的概率
-  sleep-chance: 0.05
+  sleep-chance: 0.02
 
   # 移动前随机休息时间范围 (秒)
   relax-min: 2
@@ -36,7 +36,7 @@ pet:
   interactive: true
 
   # 是否启用语音 (仅控制随机/问候语音, 不影响Interact)
-  voice-enabled: true
+  voice-enabled: false
 
   # 桌宠窗口是否始终置顶
   always-on-top: true
