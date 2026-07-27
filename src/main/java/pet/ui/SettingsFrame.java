@@ -75,6 +75,7 @@ public final class SettingsFrame extends JFrame {
         voiceEnabledCheck = new JCheckBox("语音功能", c.isVoiceEnabled());
         alwaysOnTopCheck = new JCheckBox("窗口置顶", c.isAlwaysOnTop());
         interactiveCheck = new JCheckBox("启用交互", c.isInteractive());
+        alwaysOnTopCheck.addActionListener(e -> applyAlwaysOnTop());
 
         addRow(panel, gbc, new JLabel("模型:"));
         gbc.gridy++;
@@ -193,6 +194,13 @@ public final class SettingsFrame extends JFrame {
         pet.setVoiceEnabled(voiceEnabledCheck.isSelected());
         pet.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
         pet.setInteractive(interactiveCheck.isSelected());
+    }
+
+    private void applyAlwaysOnTop() {
+        PetCore pet = Main.getPetCore();
+        if (pet != null) {
+            pet.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
+        }
     }
 
     public void loadCurrentValues() {

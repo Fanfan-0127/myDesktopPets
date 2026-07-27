@@ -4,6 +4,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -78,7 +79,7 @@ public class PetCore extends ApplicationAdapter {
     private float ambientVoiceIntervalSeconds = cfg.getAmbientVoiceInterval();
     private boolean interactive = cfg.isInteractive();
     private boolean voiceEnabled = cfg.isVoiceEnabled();
-    private boolean alwaysOnTop = cfg.isAlwaysOnTop();
+    private volatile boolean alwaysOnTop = cfg.isAlwaysOnTop();
     private int pad = cfg.getPad();
     private int rightPadExtra = cfg.getRightPadExtra();
 
@@ -195,7 +196,9 @@ public class PetCore extends ApplicationAdapter {
     @Override
     public void render() {
         if (!windowInitDone) {
-            WindowManager.init("DesktopPet");
+            Lwjgl3Graphics graphics = (Lwjgl3Graphics) Gdx.graphics;
+            long glfwWindow = graphics.getWindow().getWindowHandle();
+            WindowManager.init(glfwWindow, alwaysOnTop);
             WindowManager.moveWindow(windowX, windowY, windowW, windowH);
             windowInitDone = true;
         }
@@ -649,7 +652,9 @@ public class PetCore extends ApplicationAdapter {
     public boolean isVoiceEnabled() { return voiceEnabled; }
     public void setAlwaysOnTop(boolean on) {
         this.alwaysOnTop = on;
-        WindowManager.setAlwaysOnTop(on);
+        if (Gdx.app != null) {
+            Gdx.app.postRunnable(() -> WindowManager.setAlwaysOnTop(on));
+        }
     }
     public boolean isAlwaysOnTop() { return alwaysOnTop; }
 

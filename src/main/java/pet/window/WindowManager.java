@@ -7,11 +7,12 @@ import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinUser;
 import java.util.ArrayList;
 import java.util.List;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeWin32;
 
 public final class WindowManager {
 
     private static final int WS_EX_TRANSPARENT = 0x20;
-    private static final int WS_EX_TOPMOST = 0x08;
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
     private static final int DWMWA_CLOAKED = 14;
     private static final int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
@@ -19,45 +20,29 @@ public final class WindowManager {
     private static final int HORIZONTAL_SNAP_GAP = 18;
     private static final int MIN_WINDOW_SIZE = 120;
     private static final int GA_ROOT = 2;
-    private static final WinDef.HWND HWND_TOPMOST = new WinDef.HWND(Pointer.createConstant(-1));
-    private static final WinDef.HWND HWND_NOTOPMOST = new WinDef.HWND(Pointer.createConstant(-2));
-
     private static final Dwmapi DWMAPI =
         Native.load("dwmapi", Dwmapi.class);
 
-    private static WinDef.HWND petHwnd;
-    private static boolean initialized;
+    private static volatile WinDef.HWND petHwnd;
+    private static volatile long glfwWindowHandle;
+    private static volatile boolean initialized;
+    private static volatile boolean alwaysOnTop;
     private static boolean visible = true;
 
     private WindowManager() {}
 
-    public static void init(String windowTitle) {
-        for (int i = 0; i < 100; i++) {
-            petHwnd = User32.INSTANCE.FindWindow(null, windowTitle);
-            if (petHwnd != null) {
-                break;
-            }
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+    public static void init(long windowHandle, boolean onTop) {
+        long nativeWindowHandle = GLFWNativeWin32.glfwGetWin32Window(windowHandle);
+        if (nativeWindowHandle == 0) {
+            throw new IllegalArgumentException("Native window handle must not be zero");
         }
-        if (petHwnd == null) {
-            return;
-        }
-
+        glfwWindowHandle = windowHandle;
+        petHwnd = new WinDef.HWND(Pointer.createConstant(nativeWindowHandle));
         int exStyle = User32.INSTANCE.GetWindowLong(petHwnd, WinUser.GWL_EXSTYLE);
-        exStyle |= WS_EX_TRANSPARENT | WS_EX_TOPMOST;
+        exStyle |= WS_EX_TRANSPARENT;
         User32.INSTANCE.SetWindowLong(petHwnd, WinUser.GWL_EXSTYLE, exStyle);
-        User32.INSTANCE.SetWindowPos(
-            petHwnd,
-            HWND_TOPMOST,
-            0, 0, 0, 0,
-            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_FRAMECHANGED
-        );
         initialized = true;
+        setAlwaysOnTop(onTop);
     }
 
     public static void moveWindow(int x, int y, int width, int height) {
@@ -128,23 +113,19 @@ public final class WindowManager {
     }
 
     public static void setAlwaysOnTop(boolean on) {
+        alwaysOnTop = on;
         if (!initialized) {
             return;
         }
-        int exStyle = User32.INSTANCE.GetWindowLong(petHwnd, WinUser.GWL_EXSTYLE);
-        if (on) {
-            exStyle |= WS_EX_TOPMOST;
-        } else {
-            exStyle &= ~WS_EX_TOPMOST;
-        }
-        User32.INSTANCE.SetWindowLong(petHwnd, WinUser.GWL_EXSTYLE, exStyle);
-        WinDef.HWND insertAfter = on ? HWND_TOPMOST : HWND_NOTOPMOST;
-        User32.INSTANCE.SetWindowPos(
-            petHwnd,
-            insertAfter,
-            0, 0, 0, 0,
-            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_FRAMECHANGED
+        GLFW.glfwSetWindowAttrib(
+            glfwWindowHandle,
+            GLFW.GLFW_FLOATING,
+            on ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE
         );
+    }
+
+    public static boolean isAlwaysOnTop() {
+        return alwaysOnTop;
     }
 
     private static SnapCandidate buildSnapCandidate(
