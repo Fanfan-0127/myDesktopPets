@@ -135,6 +135,8 @@
                                         <argument>target/jre</argument>
                                         <argument>--java-options</argument>
                                         <argument>-Dfile.encoding=UTF-8</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>-Xmx256m</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
