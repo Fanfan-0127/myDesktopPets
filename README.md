@@ -27,7 +27,7 @@ java -jar target/desktoppet-1.0.jar
 ### Windows Release（无需 Java）
 
 ```
-package-windows.bat
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\package-windows.ps1
 ```
 
 或：
