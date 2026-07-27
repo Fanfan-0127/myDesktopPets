@@ -18,6 +18,8 @@ public final class SettingsFrame extends JFrame {
     private final JSlider relaxMinSlider;
     private final JSlider relaxMaxSlider;
     private final JSlider voiceIntervalSlider;
+    private final JCheckBox voiceEnabledCheck;
+    private final JCheckBox alwaysOnTopCheck;
     private final JCheckBox interactiveCheck;
     private final JLabel animSpeedLabel;
     private final JLabel moveSpeedLabel;
@@ -67,6 +69,8 @@ public final class SettingsFrame extends JFrame {
         relaxMaxLabel = label("休息最长:", relaxMaxSlider, "s");
         voiceIntervalLabel = label("语音频率:", voiceIntervalSlider, "s");
 
+        voiceEnabledCheck = new JCheckBox("语音功能", true);
+        alwaysOnTopCheck = new JCheckBox("窗口置顶", true);
         interactiveCheck = new JCheckBox("启用交互", true);
 
         addRow(panel, gbc, new JLabel("模型:"));
@@ -112,6 +116,12 @@ public final class SettingsFrame extends JFrame {
         addRow(panel, gbc, relaxMaxLabel);
         gbc.gridy++;
         panel.add(relaxMaxSlider, gbc);
+
+        gbc.gridy++;
+        panel.add(voiceEnabledCheck, gbc);
+
+        gbc.gridy++;
+        panel.add(alwaysOnTopCheck, gbc);
 
         gbc.gridy++;
         addRow(panel, gbc, voiceIntervalLabel);
@@ -177,6 +187,8 @@ public final class SettingsFrame extends JFrame {
         pet.setRelaxMin(relaxMinSlider.getValue());
         pet.setRelaxMax(relaxMaxSlider.getValue());
         pet.setAmbientVoiceIntervalSeconds(voiceIntervalSlider.getValue());
+        pet.setVoiceEnabled(voiceEnabledCheck.isSelected());
+        pet.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
         pet.setInteractive(interactiveCheck.isSelected());
     }
 
@@ -192,6 +204,8 @@ public final class SettingsFrame extends JFrame {
         relaxMinSlider.setValue((int) pet.getRelaxMin());
         relaxMaxSlider.setValue((int) pet.getRelaxMax());
         voiceIntervalSlider.setValue((int) pet.getAmbientVoiceIntervalSeconds());
+        voiceEnabledCheck.setSelected(pet.isVoiceEnabled());
+        alwaysOnTopCheck.setSelected(pet.isAlwaysOnTop());
         interactiveCheck.setSelected(pet.isInteractive());
     }
 

@@ -74,6 +74,8 @@ public class PetCore extends ApplicationAdapter {
     private float specialChance = 0.02f;
     private float ambientVoiceIntervalSeconds = 50f;
     private boolean interactive = true;
+    private boolean voiceEnabled = true;
+    private boolean alwaysOnTop = true;
     private int pad = 30;
     private int rightPadExtra = 10;
 
@@ -548,7 +550,7 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private boolean tryPlayVoice(Music voice) {
-        if (voice == null || isVoicePlaying()) {
+        if (voice == null || !voiceEnabled || isVoicePlaying()) {
             return false;
         }
         currentVoice = voice;
@@ -636,6 +638,13 @@ public class PetCore extends ApplicationAdapter {
     public float getAmbientVoiceIntervalSeconds() { return ambientVoiceIntervalSeconds; }
     public void setInteractive(boolean on) { this.interactive = on; }
     public boolean isInteractive() { return interactive; }
+    public void setVoiceEnabled(boolean on) { this.voiceEnabled = on; }
+    public boolean isVoiceEnabled() { return voiceEnabled; }
+    public void setAlwaysOnTop(boolean on) {
+        this.alwaysOnTop = on;
+        WindowManager.setAlwaysOnTop(on);
+    }
+    public boolean isAlwaysOnTop() { return alwaysOnTop; }
 
     @Override
     public void resize(int width, int height) {

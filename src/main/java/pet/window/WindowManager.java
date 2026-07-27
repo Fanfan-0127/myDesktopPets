@@ -1,6 +1,7 @@
 package pet.window;
 
 import com.sun.jna.Native;
+import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinUser;
@@ -17,6 +18,8 @@ public final class WindowManager {
     private static final int HORIZONTAL_SNAP_GAP = 18;
     private static final int MIN_WINDOW_SIZE = 120;
     private static final int GA_ROOT = 2;
+    private static final WinDef.HWND HWND_TOPMOST = new WinDef.HWND(Pointer.createConstant(-1));
+    private static final WinDef.HWND HWND_NOTOPMOST = new WinDef.HWND(Pointer.createConstant(-2));
 
     private static final Dwmapi DWMAPI =
         Native.load("dwmapi", Dwmapi.class);
@@ -115,6 +118,19 @@ public final class WindowManager {
         }
         visible = !visible;
         User32.INSTANCE.ShowWindow(petHwnd, visible ? WinUser.SW_SHOW : WinUser.SW_HIDE);
+    }
+
+    public static void setAlwaysOnTop(boolean on) {
+        if (!initialized) {
+            return;
+        }
+        WinDef.HWND insertAfter = on ? HWND_TOPMOST : HWND_NOTOPMOST;
+        User32.INSTANCE.SetWindowPos(
+            petHwnd,
+            insertAfter,
+            0, 0, 0, 0,
+            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE
+        );
     }
 
     private static SnapCandidate buildSnapCandidate(
