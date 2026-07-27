@@ -472,6 +472,10 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private void updateVoicePlayback(float delta) {
+        if (!voiceEnabled) {
+            return;
+        }
+
         if (greetingPending && greetingVoice != null) {
             greetingDelayTimer -= delta;
             if (greetingDelayTimer <= 0f) {
@@ -550,7 +554,7 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private boolean tryPlayVoice(Music voice) {
-        if (voice == null || !voiceEnabled || isVoicePlaying()) {
+        if (voice == null || isVoicePlaying()) {
             return false;
         }
         currentVoice = voice;
