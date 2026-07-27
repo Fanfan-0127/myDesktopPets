@@ -11,6 +11,7 @@ import java.util.List;
 public final class WindowManager {
 
     private static final int WS_EX_TRANSPARENT = 0x20;
+    private static final int WS_EX_TOPMOST = 0x08;
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
     private static final int DWMWA_CLOAKED = 14;
     private static final int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
@@ -48,7 +49,7 @@ public final class WindowManager {
         }
 
         int exStyle = User32.INSTANCE.GetWindowLong(petHwnd, WinUser.GWL_EXSTYLE);
-        exStyle |= WS_EX_TRANSPARENT;
+        exStyle |= WS_EX_TRANSPARENT | WS_EX_TOPMOST;
         User32.INSTANCE.SetWindowLong(petHwnd, WinUser.GWL_EXSTYLE, exStyle);
         initialized = true;
     }
