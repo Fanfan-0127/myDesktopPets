@@ -180,11 +180,16 @@ public final class SettingsFrame extends JFrame {
         if (pet == null) return;
 
         String selectedModel = (String) modelSelector.getSelectedItem();
-        if (selectedModel != null) pet.switchModel(selectedModel);
+        if (selectedModel != null && !selectedModel.equals(pet.getCurrentModelName())) {
+            pet.switchModel(selectedModel);
+        }
 
         pet.setAnimSpeed(animSpeedSlider.getValue() / 100f);
         pet.setMoveSpeed(moveSpeedSlider.getValue() / 100f);
-        pet.setPetScale(sizeSlider.getValue() / 100f);
+        float selectedScale = sizeSlider.getValue() / 100f;
+        if (Float.compare(selectedScale, pet.getPetScale()) != 0) {
+            pet.setPetScale(selectedScale);
+        }
         pet.setSpecialChance(specialChanceSlider.getValue());
         pet.setMoveFrequency(moveFreqSlider.getValue());
         pet.setSleepTimeout(sleepTimerSlider.getValue());
@@ -206,6 +211,7 @@ public final class SettingsFrame extends JFrame {
     public void loadCurrentValues() {
         PetCore pet = Main.getPetCore();
         if (pet == null) return;
+        modelSelector.setSelectedItem(pet.getCurrentModelName());
         animSpeedSlider.setValue((int) (pet.getAnimSpeed() * 100));
         moveSpeedSlider.setValue((int) (pet.getMoveSpeed() * 100));
         sizeSlider.setValue((int) (pet.getPetScale() * 100));

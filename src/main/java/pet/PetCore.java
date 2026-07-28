@@ -42,6 +42,7 @@ public class PetCore extends ApplicationAdapter {
     private Skeleton skeleton;
     private AnimationState animationState;
     private SkeletonData skeletonData;
+    private volatile String currentModelName;
     private float animSpeed = cfg.getAnimSpeed();
     private float moveSpeed = cfg.getMoveSpeed();
     private float petScale = cfg.getPetScale();
@@ -122,10 +123,14 @@ public class PetCore extends ApplicationAdapter {
         skeleton.updateWorldTransform();
         float[] bbox = computeBbox();
         if (bbox != null) {
-            windowW = (int) (bbox[2] - bbox[0]) + pad * 2 + rightPadExtra;
-            windowH = (int) (bbox[3] - bbox[1]) + pad * 2;
-            renderX = pad - bbox[0];
-            renderY = pad - bbox[1];
+            int minX = (int) Math.floor(bbox[0]);
+            int minY = (int) Math.floor(bbox[1]);
+            int maxX = (int) Math.ceil(bbox[2]);
+            int maxY = (int) Math.ceil(bbox[3]);
+            windowW = maxX - minX + pad * 2 + rightPadExtra;
+            windowH = maxY - minY + pad * 2;
+            renderX = pad - minX;
+            renderY = pad - minY;
             petMinX = renderX + bbox[0];
             petMinY = renderY + bbox[1];
             petMaxX = renderX + bbox[2];
@@ -140,11 +145,11 @@ public class PetCore extends ApplicationAdapter {
 
     private float[] computeBbox() {
         float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
-        float maxX = Float.MIN_VALUE, maxY = Float.MIN_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
         boolean found = false;
         for (Slot slot : skeleton.getDrawOrder()) {
             Attachment att = slot.getAttachment();
-            if (att == null) continue;
+            if (att == null || !slot.getBone().isActive() || !isAttachmentVisible(slot, att)) continue;
             float[] verts = null;
             if (att instanceof RegionAttachment) {
                 verts = new float[8];
@@ -168,13 +173,23 @@ public class PetCore extends ApplicationAdapter {
         return found ? new float[] { minX, minY, maxX, maxY } : null;
     }
 
-    private void loadModel(String modelName) {
-        disposeVoices();
+    private boolean isAttachmentVisible(Slot slot, Attachment attachment) {
+        float alpha = skeleton.getColor().a * slot.getColor().a;
+        if (attachment instanceof RegionAttachment) {
+            alpha *= ((RegionAttachment) attachment).getColor().a;
+        } else if (attachment instanceof MeshAttachment) {
+            alpha *= ((MeshAttachment) attachment).getColor().a;
+        }
+        return alpha >= 1f / 255f;
+    }
+
+    private boolean loadModel(String modelName) {
         ModelFiles files = ModelManager.getModelFiles(modelName);
         if (files == null) {
             Gdx.app.error("PetCore", "Model not found: " + modelName);
-            return;
+            return false;
         }
+        disposeVoices();
 
         TextureAtlas atlas = new TextureAtlas(files.atlas());
         SkeletonBinary binary = new SkeletonBinary(atlas);
@@ -186,11 +201,13 @@ public class PetCore extends ApplicationAdapter {
         AnimationStateData stateData = new AnimationStateData(skeletonData);
         stateData.setDefaultMix(0.3f);
         animationState = new AnimationState(stateData);
+        currentModelName = modelName;
 
         loadVoices(files.voiceDir());
         greetingDelayTimer = 1f;
         greetingPending = true;
         scheduleNextAmbientVoice();
+        return true;
     }
 
     @Override
@@ -373,8 +390,12 @@ public class PetCore extends ApplicationAdapter {
     }
 
     private void setAnimation(String name, boolean loop) {
-        if (!name.equals(currentAnim)) {
-            currentAnim = name;
+        var entry = animationState.getCurrent(0);
+        String activeAnimation = entry != null && entry.getAnimation() != null
+            ? entry.getAnimation().getName()
+            : null;
+        currentAnim = name;
+        if (!name.equals(activeAnimation)) {
             animationState.setAnimation(0, name, loop);
         }
     }
@@ -601,11 +622,19 @@ public class PetCore extends ApplicationAdapter {
     }
 
     public void switchModel(String modelName) {
+        if (modelName == null || modelName.equals(currentModelName)) {
+            return;
+        }
         Gdx.app.postRunnable(() -> {
+            if (modelName.equals(currentModelName)) {
+                return;
+            }
             String prevAnim = currentAnim;
-            loadModel(modelName);
+            if (!loadModel(modelName)) {
+                return;
+            }
 
-            String anim = prevAnim != null ? prevAnim : "Relax";
+            String anim = prevAnim != null && hasAnimation(prevAnim) ? prevAnim : "Relax";
             setAnimation(anim, true);
             animationState.update(0);
             animationState.apply(skeleton);
@@ -614,6 +643,8 @@ public class PetCore extends ApplicationAdapter {
             WindowManager.moveWindow(windowX, windowY, windowW, windowH);
         });
     }
+
+    public String getCurrentModelName() { return currentModelName; }
 
     public void setAnimSpeed(float speed) { this.animSpeed = speed; }
     public float getAnimSpeed() { return animSpeed; }
